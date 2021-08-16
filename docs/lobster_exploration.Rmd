@@ -1,0 +1,114 @@
+---
+title: "Lobster exploration"
+author: "Grace Lewin"
+date: "8/16/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(janitor)
+```
+
+
+```{r}
+# Read in data, convert -99999 to na values, convert column names to lower snake case, convert data from frequency to case format using dplyr::uncount()
+lobsters <- read_csv(here("data", "Lobster_Abundance_All_Years_20210412.csv"), na = c("-99999", "")) %>% 
+  clean_names() %>% 
+  uncount(count)
+# dplyr::uncount() duplicates rows according to a weighting variable, in this case "count"
+
+```
+
+Find counts and mean sizes by site & year
+
+```{r}
+counts_mean_lengths <- lobsters %>% 
+  group_by(site, year) %>% 
+  summarise(counts = n(),
+            mean_carapace_length = mean(size_mm, na.rm = TRUE))
+
+ggplot(counts_mean_lengths, aes(x = year, y = counts)) +
+  geom_point(aes(color = site)) +
+  facet_wrap(~site)
+```
+
+Find the proportion of legal lobsters at each site for 2020
+
+```{r}
+lobsters_2020 <- lobsters %>% 
+  filter(year == 2020)
+
+counts_site_legal_2020 <- lobsters_2020 %>% 
+  mutate(legal = case_when(
+    size_mm < 79.76 ~ "no",
+    size_mm >= 79.76 ~ "yes"
+  )) %>% 
+  group_by(site, legal) %>% 
+  summarize(count = n())
+
+ggplot(counts_site_legal_2020, aes(y = count, x = site)) + 
+  geom_col(position = "fill", aes(fill = legal))
+```
+IVEE and NAPL had the largest proportion of legal lobsters in 2020. One reason this might be the case is that these two sites are within MPAs. Therefore, there is less fishing pressure at these sites. 
+
+## Task 3: Random lobster wrangling
+
+```{r}
+ex_a <- lobsters %>% 
+  filter(site %in% c("IVEE", "CARP", "NAPL"))
+
+ex_b <- lobsters %>% 
+  filter(month == 8)
+
+ex_c <- lobsters %>% 
+  filter(site == "AQUE" | size_mm > 70)
+
+ex_d <- lobsters %>% 
+  filter(!site == "NAPL")
+```
+
+group_by() %>% summarize() practice
+
+```{r}
+ex_e <- lobsters %>% 
+  group_by(site) %>% 
+  summarize(mean_size = mean(size_mm, na.rm = TRUE),
+            sd_size = sd(size_mm, na.rm = TRUE))
+
+ex_f <- lobsters %>% 
+  group_by(site, month) %>% 
+  summarise(max_length = max(size_mm, na.rm = TRUE))
+```
+
+mutate() practice
+
+```{r}
+ex_g <- lobsters %>% 
+  mutate(size_cm = size_mm/10)
+
+ex_h <- lobsters %>% 
+  mutate(site = tolower(site))
+
+ex_i <- lobsters %>% 
+  mutate(area = as.character(area))
+```
+
+case_when() practice
+
+```{r}
+ex_j <- lobsters %>% 
+  mutate(size_bin = case_when(
+    size_mm <= 70 ~ "small",
+    size_mm > 70 ~ "large"
+  ))
+
+ex_k <- lobsters %>% 
+  mutate(designation = case_when(
+    site %in% c("IVEE", "NAPL") ~ "MPA",
+    TRUE ~ "not MPA"
+  ))
+```
+
